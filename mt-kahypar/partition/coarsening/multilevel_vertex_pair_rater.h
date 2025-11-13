@@ -39,7 +39,7 @@
 
 #include "mt-kahypar/datastructures/sparse_map.h"
 #include "mt-kahypar/partition/context.h"
-#include "mt-kahypar/partition/coarsening/policies/rating_fixed_vertex_acceptance_policy.h"
+#include "mt-kahypar/partition/coarsening/policies/never_merge_fixed_vertices_policy.h"
 
 
 namespace mt_kahypar {
@@ -189,7 +189,7 @@ class MultilevelVertexPairRater {
         bool accept_fixed_vertex_contraction = true;
         if constexpr ( has_fixed_vertices ) {
           accept_fixed_vertex_contraction =
-            FixedVertexAcceptancePolicy::acceptContraction(
+            NeverMergeFixedPolicy::acceptContraction(
               hypergraph, fixed_vertices, _context, tmp_target, u);
         }
 

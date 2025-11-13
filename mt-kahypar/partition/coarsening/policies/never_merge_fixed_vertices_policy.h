@@ -11,7 +11,7 @@
 
 namespace mt_kahypar {
 
-class NoMergeFixedPolicy final : public kahypar::meta::PolicyBase {
+class NeverMergeFixedPolicy final : public kahypar::meta::PolicyBase {
 public:
 
 // This function decides if contracting v onto u is allowed if the hypergraph contains fixed vertices.

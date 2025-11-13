@@ -29,8 +29,8 @@
 #include <tbb/parallel_sort.h>
 
 #include "mt-kahypar/definitions.h"
-#include "mt-kahypar/partition/coarsening/policies/rating_fixed_vertex_acceptance_policy.h"
 #include "mt-kahypar/utils/hash.h"
+#include "mt-kahypar/partition/coarsening/policies/never_merge_fixed_vertices_policy.h"
 
 namespace mt_kahypar {
 
@@ -256,7 +256,7 @@ void DeterministicMultilevelCoarsener<TypeTraits>::calculatePreferredTargetClust
     double target_score = entry.value;
     bool accept_fixed_vertex_contraction = true;
     if constexpr ( has_fixed_vertices ) {
-      accept_fixed_vertex_contraction = FixedVertexAcceptancePolicy::acceptContraction(hg, fixed_vertices, _context, target_cluster, u);
+      accept_fixed_vertex_contraction = NeverMergeFixedPolicy::acceptContraction(hg, fixed_vertices, _context, target_cluster, u);
     }
 
     if (target_score >= best_score && target_cluster != u && hg.communityID(target_cluster) == comm_u
