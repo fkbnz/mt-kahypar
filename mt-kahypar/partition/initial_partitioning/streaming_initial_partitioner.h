@@ -31,6 +31,8 @@ private:
       _context.partition.perfect_balance_part_weights[block];
   }
 
+  std::size_t compute_block_score(HypernodeID node, PartitionID part);
+
   InitialPartitioningDataContainer<TypeTraits> &_ip_data;
   const Context &_context;
   std::mt19937 _rng;

@@ -16,38 +16,63 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
 
     LOG << "Computing a" << _context.partition.k << "-way partition!";
 
-    // This is just copied from the RandomInitialPartitioner -- replace it with your own code!
-    // VVVVV
-    std::uniform_int_distribution<PartitionID> select_random_block(0, _context.partition.k - 1);
 
-    _ip_data.preassignFixedVertices(hg);
-    for ( const HypernodeID& hn : hg.nodes() ) {
-      if ( !hg.isFixed(hn) ) {
-        // Randomly select a block to assign the hypernode
-        PartitionID block = select_random_block(_rng);
-        PartitionID current_block = block;
-        while ( !fitsIntoBlock(hg, hn, current_block) ) {
-          // If the hypernode does not fit into the random selected block
-          // (because it would violate the balance constraint), we try to
-          // assign it to the next block.
-          current_block = ( current_block + 1 ) % _context.partition.k;
-          if ( current_block == block ) {
-            // In case, we find no valid block to assign the current hypernode
-            // to, we assign it to random selected block
-            break;
-          }
+    // alpha and gamma taken from Fennel
+    double gamma = 1.5;
+    double alpha = std::sqrt(hg.k()) * hg.initialNumEdges() / (std::pow(hg.initialNumNodes(), 1.5));
+
+    for (const auto& node : hg.nodes()) {
+
+        if (hg.isFixed(node)) {
+            continue;
         }
-        hg.setNodePart(hn, current_block);
-      }
+
+        PartitionID new_part;
+        double max_objective = std::numeric_limits<double>::min();
+
+        // Calculate the objective for each part
+        for (PartitionID part = 0; part < hg.k(); part++) {     
+            std::size_t block_score = compute_block_score(node, part); 
+            HypernodeWeight part_weight = hg.partWeight(part); 
+
+            double current_objective = block_score - alpha * gamma * std::pow(part_weight, 0.5); 
+            
+            if (current_objective > max_objective) {
+                new_part = part;
+                max_objective = current_objective;
+            }            
+        }
+
+        PartitionID old_part = hg.partID(node);
+        hg.changeNodePart(node, old_part, new_part);
     }
-    // ^^^^^
-    // End of random initial partitioning
 
 
     HighResClockTimepoint end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration<double>(end - start).count();
     _ip_data.commit(InitialPartitioningAlgorithm::streaming, _rng, _tag, time);
   }
+}
+
+template<typename TypeTraits>
+[[nodiscard]]
+std::size_t StreamingInitialPartitioner<TypeTraits>::compute_block_score(HypernodeID node, PartitionID part) {
+    PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
+
+    // if there is an artificial node in an edge
+    // then the (up until now) highest degree vertex 
+    // of that edge was assigned to the block 
+    // the artificial node is fixed to.
+    std::size_t result = 0;
+    for (const auto&  incident_edge : hg.incidentEdges(node)) {
+        for (const auto& pin : hg.pins(incident_edge)) {
+            if (hg.isFixed(pin) && hg.partID(pin) == part) {
+                result++;
+            }
+        }
+    }
+
+    return result;
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(StreamingInitialPartitioner)
