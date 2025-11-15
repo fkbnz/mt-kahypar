@@ -18,7 +18,8 @@ public:
                               const Context &context, const int seed,
                               const int tag)
       : _ip_data(ip::to_reference<TypeTraits>(ip_data)), _context(context),
-        _rng(seed), _tag(tag) {}
+        _rng(seed), _tag(tag), 
+        _partition_history(_ip_data.local_partitioned_hypergraph().topLevelNumEdges(), {-1, 0}) { }
 
 private:
   void partitionImpl() final;
@@ -31,12 +32,16 @@ private:
       _context.partition.perfect_balance_part_weights[block];
   }
 
-  std::size_t compute_block_score(HypernodeID node, PartitionID part);
+  std::size_t computeBlockScore(HypernodeID node, PartitionID part);
+  std::vector<std::pair<int, double>> computeObjectiveForAllParts(HypernodeID node); 
+  void updatePartitionHistory(HypernodeID node, PartitionID part);
+  PartitionID selectPart(HypernodeID node, std::vector<std::pair<int, double>> objectives_for_parts);
 
   InitialPartitioningDataContainer<TypeTraits> &_ip_data;
   const Context &_context;
   std::mt19937 _rng;
   const int _tag;
+  std::vector<std::pair<PartitionID, std::size_t>> _partition_history;
 };
 
 } // namespace mt_kahypar
