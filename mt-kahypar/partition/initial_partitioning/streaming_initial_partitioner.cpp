@@ -15,12 +15,19 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
+    // LOG << "Computing a" << _context.partition.k << "-way partition!";
 
-    LOG << "Computing a" << _context.partition.k << "-way partition!";
+    for (const auto& node : hg.nodes()) {
+        if (hg.isFixed(node)) {
+            hg.setNodePart(node, hg.fixedVertexBlock(node));
+        }
+    }
 
     for (const auto& node : hg.nodes()) {
 
-        if (hg.isFixed(node)) { continue; }
+        if (hg.isFixed(node)) {
+            continue;
+        }
 
         PartitionID new_part = selectPart(node, computeObjectiveForAllParts(node));
         hg.setNodePart(node, new_part);
@@ -40,15 +47,15 @@ std::vector<std::pair<int, double>> StreamingInitialPartitioner<TypeTraits>::com
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
     // alpha and gamma taken from Fennel
-    double gamma = 1.5;
-    double alpha = std::sqrt(hg.k()) * hg.initialNumEdges() / (std::pow(hg.initialNumNodes(), 1.5));
+    constexpr double gamma = 1.5;
+    const double alpha = (std::sqrt(hg.k()) * hg.topLevelNumEdges()) / (std::pow(hg.topLevelNumNodes(), 1.5));
 
     std::vector<std::pair<int, double>> objectives(hg.k());
     for (PartitionID part = 0; part < hg.k(); part++) {
-        std::size_t block_score = computeBlockScore(node, part); 
+        const std::size_t block_score = computeBlockScore(node, part); 
         HypernodeWeight part_weight = hg.partWeight(part); 
 
-        double current_objective = block_score - alpha * gamma * std::pow(part_weight, 0.5);
+        const double current_objective = block_score - alpha * gamma * std::sqrt(part_weight);
         objectives[part] = {part, current_objective};
     }
 
@@ -63,6 +70,11 @@ std::size_t StreamingInitialPartitioner<TypeTraits>::computeBlockScore(Hypernode
     std::size_t result = 0;
     for (const auto&  incident_edge : hg.incidentEdges(node)) {
 
+        if (hg.connectivity(incident_edge) > 1 && 
+            _context.partition.objective == Objective::cut) {
+            continue;
+        }
+
         // if there is an artificial node in an edge
         // then the (up until now) highest degree vertex 
         // of that edge was assigned to the block 
@@ -70,7 +82,7 @@ std::size_t StreamingInitialPartitioner<TypeTraits>::computeBlockScore(Hypernode
         // Note that fixed nodes represent assignments of 
         // PREVIOUS batches.
         for (const auto& pin : hg.pins(incident_edge)) {
-            if (hg.isFixed(pin) && hg.partID(pin) == part) {
+            if (hg.isFixed(pin) && hg.fixedVertexBlock(pin) == part) {
                 result++;
             }
         }
@@ -92,7 +104,7 @@ PartitionID StreamingInitialPartitioner<TypeTraits>::selectPart(
     std::vector<std::pair<int, double>> objectives_for_parts
 ) {
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
-    auto compare = [](const std::pair<int, double>& lhs, const std::pair<int, double>& rhs) {
+    constexpr auto compare = [](const std::pair<int, double>& lhs, const std::pair<int, double>& rhs) {
         return lhs.second > rhs.second;
     };
 
@@ -111,7 +123,7 @@ template<typename TypeTraits>
 void StreamingInitialPartitioner<TypeTraits>::updatePartitionHistory(HypernodeID node, PartitionID part) {
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-    std::size_t node_degree = hg.nodeDegree(node);
+    const std::size_t node_degree = hg.nodeDegree(node);
     for (const auto& incident_edge : hg.incidentEdges(node)) {
         if (node_degree > _partition_history[incident_edge].second) {
             _partition_history[incident_edge] = {part, node_degree};
