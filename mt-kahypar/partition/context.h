@@ -298,6 +298,9 @@ std::ostream & operator<< (std::ostream& str, const SharedMemoryParameters& para
 
 class Context {
  public:
+  std::size_t inputNumNodes;
+  std::size_t inputNumEdges;
+
   PartitioningParameters partition { };
   PreprocessingParameters preprocessing { };
   CoarseningParameters coarsening { };

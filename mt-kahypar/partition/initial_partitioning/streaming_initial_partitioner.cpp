@@ -46,16 +46,13 @@ std::vector<std::pair<int, double>> StreamingInitialPartitioner<TypeTraits>::com
 
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-    // alpha and gamma taken from Fennel
-    constexpr double gamma = 1.5;
-    const double alpha = (std::sqrt(hg.k()) * hg.topLevelNumEdges()) / (std::pow(hg.topLevelNumNodes(), 1.5));
 
     std::vector<std::pair<int, double>> objectives(hg.k());
     for (PartitionID part = 0; part < hg.k(); part++) {
         const std::size_t block_score = computeBlockScore(node, part); 
         HypernodeWeight part_weight = hg.partWeight(part); 
-
-        const double current_objective = block_score - alpha * gamma * std::sqrt(part_weight);
+    
+        const double current_objective = balanced_objective(block_score, part_weight);
         objectives[part] = {part, current_objective};
     }
 
@@ -67,7 +64,7 @@ template<typename TypeTraits>
 std::size_t StreamingInitialPartitioner<TypeTraits>::computeBlockScore(HypernodeID node, PartitionID part) {
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-    std::size_t result = 0;
+    HyperedgeWeight result = 0;
     for (const auto&  incident_edge : hg.incidentEdges(node)) {
 
         if (hg.connectivity(incident_edge) > 1 && 
@@ -83,15 +80,12 @@ std::size_t StreamingInitialPartitioner<TypeTraits>::computeBlockScore(Hypernode
         // PREVIOUS batches.
         for (const auto& pin : hg.pins(incident_edge)) {
             if (hg.isFixed(pin) && hg.fixedVertexBlock(pin) == part) {
-                result++;
+                result += hg.edgeWeight(incident_edge);
             }
         }
 
-        // if the entry in the partition history is 
-        // the current part id then the (up until now) highest degree 
-        // vertex of THIS batch was assignt to that node.
-        if (_partition_history[incident_edge].first == part) {
-            result++;
+        if (_partition_history[incident_edge]== part) {
+            result += hg.edgeWeight(incident_edge);
         } 
     }
 
@@ -123,11 +117,8 @@ template<typename TypeTraits>
 void StreamingInitialPartitioner<TypeTraits>::updatePartitionHistory(HypernodeID node, PartitionID part) {
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-    const std::size_t node_degree = hg.nodeDegree(node);
     for (const auto& incident_edge : hg.incidentEdges(node)) {
-        if (node_degree > _partition_history[incident_edge].second) {
-            _partition_history[incident_edge] = {part, node_degree};
-        }
+        _partition_history[incident_edge] = part;
     } 
 }
 
