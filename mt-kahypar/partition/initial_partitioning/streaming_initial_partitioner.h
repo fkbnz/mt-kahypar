@@ -47,7 +47,7 @@ private:
 
       // alpha and gamma taken from Fennel
       constexpr double gamma = 1.5; 
-      const double alpha = (std::sqrt(hg.k()) * hg.initialNumEdges()) / (std::pow(hg.initialNumNodes(), gamma));
+      const double alpha = (std::sqrt(hg.k()) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
 
       return block_score - alpha * gamma * std::sqrt(part_weight);
   }
