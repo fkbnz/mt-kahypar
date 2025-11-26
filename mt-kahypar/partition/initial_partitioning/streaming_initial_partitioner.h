@@ -1,30 +1,60 @@
+/*******************************************************************************
+ * MIT License
+ *
+ * This file is part of Mt-KaHyPar.
+ *
+ * Copyright (C) 2019 Tobias Heuer <tobias.heuer@kit.edu>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ ******************************************************************************/
+
 #pragma once
-#include <tuple>
-#include <vector>
 
-
-#include "mt-kahypar/parallel/stl/scalable_queue.h"
 #include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
+#include "mt-kahypar/partition/initial_partitioning/label_propagation_initial_partitioner.h"
 
 namespace mt_kahypar {
 
-template <typename TypeTraits>
+template<typename TypeTraits>
 class StreamingInitialPartitioner : public IInitialPartitioner {
-  static constexpr bool debug = false;
 
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
+  using DeltaFunction = std::function<void (const SynchronizedEdgeUpdate&)>;
+  #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }
 
-public:
+  static constexpr bool debug = false;
+  static constexpr bool enable_heavy_assert = false;
+
+ public:
   StreamingInitialPartitioner(const InitialPartitioningAlgorithm,
-                              ip_data_container_t *ip_data,
-                              const Context &context, const int seed,
-                              const int tag)
-      : _ip_data(ip::to_reference<TypeTraits>(ip_data)), _context(context),
-        _rng(seed), _tag(tag), 
-        _partition_history(_ip_data.local_partitioned_hypergraph().initialNumEdges(), -1) { }
+                                    ip_data_container_t* ip_data,
+                                    const Context& context,
+                                    const int seed, const int tag) :
+    _ip_data(ip::to_reference<TypeTraits>(ip_data)),
+    _context(context),
+    _valid_blocks(context.partition.k),
+    _tmp_scores(context.partition.k),
+    _rng(seed),
+    _tag(tag) { }
 
-private:
+ private:
   void partitionImpl() final;
 
   bool fitsIntoBlock(PartitionedHypergraph& hypergraph,
@@ -32,35 +62,43 @@ private:
                      const PartitionID block) const {
     ASSERT(block != kInvalidPartition && block < _context.partition.k);
     return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
-      _context.partition.perfect_balance_part_weights[block];
+      _context.partition.perfect_balance_part_weights[block] *
+      std::min(1.005, 1 + _context.partition.epsilon);
   }
 
-  std::size_t computeBlockScore(HypernodeID node, PartitionID part);
-
-
- std::vector<std::pair<int, double>> computeObjectiveForAllParts(HypernodeID node); 
-  void updatePartitionHistory(HypernodeID node, PartitionID part);
-  PartitionID selectPart(HypernodeID node, std::vector<std::pair<int, double>> objectives_for_parts);
-
-  double balanced_objective(std::size_t block_score, HypernodeWeight part_weight) {
-      PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
-
-      // alpha and gamma taken from Fennel
-      constexpr double gamma = 1.5; 
-      const double alpha = (std::sqrt(hg.k()) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
-
-      return block_score - alpha * gamma * std::sqrt(part_weight);
-  }
-   double greedy_objective(std::size_t block_score) {
-      return static_cast<double>(block_score);
+  MaxGainMove computeMaxGainMove(PartitionedHypergraph& hypergraph,
+                                 const HypernodeID hn) {
+    if ( hypergraph.partID(hn) == kInvalidPartition ) {
+      return computeMaxGainMoveForUnassignedVertex(hypergraph, hn);
+    } else {
+      return computeMaxGainMoveForAssignedVertex(hypergraph, hn);
+    }
   }
 
-  InitialPartitioningDataContainer<TypeTraits> &_ip_data;
-  const Context &_context;
+  MaxGainMove computeMaxGainMoveForUnassignedVertex(PartitionedHypergraph& hypergraph,
+                                                    const HypernodeID hn);
+
+  MaxGainMove computeMaxGainMoveForAssignedVertex(PartitionedHypergraph& hypergraph,
+                                                  const HypernodeID hn);
+
+  MaxGainMove findMaxGainMove(PartitionedHypergraph& hypergraph,
+                              const HypernodeID hn,
+                              const HyperedgeWeight internal_weight);
+
+  void extendBlockToInitialBlockSize(PartitionedHypergraph& hypergraph,
+                                     const vec<HypernodeID>& seed_vertices,
+                                     const PartitionID block);
+
+  void assignVertexToBlockWithMinimumWeight(PartitionedHypergraph& hypergraph,
+                                            const HypernodeID hn);
+
+  InitialPartitioningDataContainer<TypeTraits>& _ip_data;
+  const Context& _context;
+  kahypar::ds::FastResetFlagArray<> _valid_blocks;
+  parallel::scalable_vector<Gain> _tmp_scores;
   std::mt19937 _rng;
   const int _tag;
-  std::vector<PartitionID> _partition_history;
-
 };
+
 
 } // namespace mt_kahypar

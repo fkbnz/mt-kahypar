@@ -31,12 +31,10 @@
 
 namespace mt_kahypar {
 
-namespace {
-  struct MaxGainMove {
-    const PartitionID block;
-    const Gain gain;
-  };
-}
+struct MaxGainMove {
+  const PartitionID block;
+  const Gain gain;
+};
 
 template<typename TypeTraits>
 class LabelPropagationInitialPartitioner : public IInitialPartitioner {
