@@ -150,6 +150,11 @@ enum class InitialPartitioningAlgorithm : uint8_t {
   UNDEFINED = 10
 };
 
+enum class StreamingRefinerAlgorithm : uint8_t {
+  streaming,
+  do_nothing
+};
+
 enum class LabelPropagationAlgorithm : uint8_t {
   label_propagation,
   deterministic,
@@ -224,6 +229,8 @@ std::ostream & operator<< (std::ostream& os, const RatingFunction& func);
 
 std::ostream & operator<< (std::ostream& os, const InitialPartitioningAlgorithm& algo);
 
+std::ostream & operator<< (std::ostream& os, const StreamingRefinerAlgorithm& algo);
+
 std::ostream & operator<< (std::ostream& os, const LabelPropagationAlgorithm& algo);
 
 std::ostream & operator<< (std::ostream& os, const JetAlgorithm& algo);
@@ -261,6 +268,8 @@ RatingFunction ratingFunctionFromString(const std::string& function);
 InitialPartitioningAlgorithm initialPartitioningAlgorithmFromString(const std::string& algo);
 
 LabelPropagationAlgorithm labelPropagationAlgorithmFromString(const std::string& type);
+
+StreamingRefinerAlgorithm streamingAlgorithmFromString(const std::string& type);
 
 JetAlgorithm jetAlgorithmFromString(const std::string& type);
 

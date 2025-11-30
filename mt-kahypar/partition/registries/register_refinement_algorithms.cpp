@@ -35,6 +35,7 @@
 #include "mt-kahypar/partition/context.h"
 #include "mt-kahypar/partition/factories.h"
 #include "mt-kahypar/partition/refinement/do_nothing_refiner.h"
+#include "mt-kahypar/partition/refinement/streaming/streaming_refiner.h"
 #include "mt-kahypar/partition/refinement/label_propagation/label_propagation_refiner.h"
 #include "mt-kahypar/partition/refinement/deterministic/deterministic_label_propagation.h"
 #include "mt-kahypar/partition/refinement/deterministic/deterministic_jet_refiner.h"
@@ -48,9 +49,16 @@
 #include "mt-kahypar/partition/refinement/rebalancing/advanced_rebalancer.h"
 #include "mt-kahypar/partition/refinement/rebalancing/deterministic_rebalancer.h"
 #include "mt-kahypar/partition/refinement/flows/deterministic/deterministic_flow_refinement_scheduler.h"
+#include "mt-kahypar/partition/refinement/streaming/streaming_refiner.h"
 
 
 namespace mt_kahypar {
+
+using StreamingRefinerDispatcher = kahypar::meta::StaticMultiDispatchFactory<
+                                   StreamingRefiner,
+                                   IRefiner,
+                                   kahypar::meta::Typelist<GraphAndGainTypesList>>;
+
 using LabelPropagationDispatcher = kahypar::meta::StaticMultiDispatchFactory<
                                    LabelPropagationRefiner,
                                    IRefiner,
@@ -122,6 +130,25 @@ using AdvancedRebalancerDispatcher = kahypar::meta::StaticMultiDispatchFactory<
 
 #define REGISTER_LP_REFINER(id, refiner, t)                                                      \
   kahypar::meta::Registrar<LabelPropagationFactory> JOIN(register_ ## refiner, t)(               \
+    id,                                                                                          \
+    [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,                       \
+       const Context& context, gain_cache_t gain_cache, IRebalancer& rebalancer) -> IRefiner* {  \
+    return new refiner(num_hypernodes, num_hyperedges, context, gain_cache, rebalancer);         \
+  })
+
+#define REGISTER_DISPATCHED_STREAMING_REFINER(id, dispatcher, ...)                                     \
+  kahypar::meta::Registrar<StreamingRefinerFactory> register_ ## dispatcher(                           \
+    id,                                                                                                \
+    [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,                             \
+       const Context& context, gain_cache_t gain_cache, IRebalancer& rebalancer) {                     \
+    return dispatcher::create(                                                                         \
+      std::forward_as_tuple(num_hypernodes, num_hyperedges, context, gain_cache, rebalancer),          \
+      __VA_ARGS__                                                                                      \
+      );                                                                                               \
+  })
+
+#define REGISTER_STREAMING_REFINER(id, refiner, t)                                               \
+  kahypar::meta::Registrar<StreamingRefinerFactory> JOIN(register_ ## refiner, t)(               \
     id,                                                                                          \
     [](const HypernodeID num_hypernodes, const HyperedgeID num_hyperedges,                       \
        const Context& context, gain_cache_t gain_cache, IRebalancer& rebalancer) -> IRefiner* {  \
@@ -233,6 +260,8 @@ void register_refinement_algorithms() {
   REGISTER_DISPATCHED_LP_REFINER(LabelPropagationAlgorithm::deterministic,
                                 DeterministicLabelPropagationDispatcher,
                                 getGraphAndGainTypesPolicy(context.partition.partition_type, context.partition.gain_policy));
+
+
   REGISTER_LP_REFINER(LabelPropagationAlgorithm::do_nothing, DoNothingRefiner, 1);
 
   REGISTER_DISPATCHED_JET_REFINER(JetAlgorithm::deterministic,
@@ -273,6 +302,13 @@ void register_refinement_algorithms() {
                                 AdvancedRebalancerDispatcher,
                                 getGraphAndGainTypesPolicy(context.partition.partition_type, context.partition.gain_policy));
   REGISTER_REBALANCER(RebalancingAlgorithm::do_nothing, DoNothingRefiner, 5);
+
+    
+  REGISTER_STREAMING_REFINER(StreamingRefinerAlgorithm::do_nothing, DoNothingRefiner, 6);
+
+  REGISTER_DISPATCHED_STREAMING_REFINER(StreamingRefinerAlgorithm::streaming,
+                                StreamingRefinerDispatcher,
+                                getGraphAndGainTypesPolicy(context.partition.partition_type, context.partition.gain_policy));
 }
 
 }  // namespace mt_kahypar

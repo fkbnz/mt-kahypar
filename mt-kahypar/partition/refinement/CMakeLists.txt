@@ -20,6 +20,7 @@ set(RefinementSources
         flows/flow_hypergraph_builder.cpp
         flows/deterministic/deterministic_flow_refinement_scheduler.cpp
         flows/deterministic/participation_scheduler.cpp
+        streaming/streaming_refiner.cpp
         )
 
 set(Km1Sources

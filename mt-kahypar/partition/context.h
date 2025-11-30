@@ -145,6 +145,18 @@ struct LabelPropagationParameters {
 
 std::ostream & operator<< (std::ostream& str, const LabelPropagationParameters& params);
 
+struct StreamingRefinerParameters {
+  StreamingRefinerAlgorithm algorithm = StreamingRefinerAlgorithm::do_nothing;
+  size_t maximum_iterations = 1;
+  mutable bool unconstrained = false;
+  bool rebalancing = true;
+  bool execute_sequential = false;
+  size_t hyperedge_size_activation_threshold = std::numeric_limits<size_t>::max();
+  double relative_improvement_threshold = -1.0;
+};
+
+std::ostream & operator<< (std::ostream& str, const StreamingRefinerParameters& params);
+
 struct JetParameters {
   JetAlgorithm algorithm = JetAlgorithm::do_nothing;
   size_t num_iterations = 12;
@@ -236,6 +248,7 @@ struct RebalancingParameters {
 std::ostream& operator<<(std::ostream& out, const RebalancingParameters& params);
 
 struct RefinementParameters {
+  StreamingRefinerParameters streaming;
   LabelPropagationParameters label_propagation;
   JetParameters jet;
   FMParameters fm;

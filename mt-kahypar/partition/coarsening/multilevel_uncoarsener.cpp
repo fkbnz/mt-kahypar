@@ -191,6 +191,7 @@ namespace mt_kahypar {
     return std::move(*_uncoarseningData.partitioned_hg);
   }
 
+  // change here
   template<typename TypeTraits>
   void MultilevelUncoarsener<TypeTraits>::refineImpl() {
     PartitionedHypergraph& partitioned_hypergraph = *_uncoarseningData.partitioned_hg;
@@ -216,6 +217,16 @@ namespace mt_kahypar {
 
       if ( _rebalancer && _context.refinement.rebalancing.algorithm != RebalancingAlgorithm::do_nothing ) {
         _rebalancer->initialize(phg);
+      }
+
+      if ( _streaming && _context.refinement.streaming.algorithm != StreamingRefinerAlgorithm::do_nothing ) {
+        _timer.start_timer("initialize_lp_refiner", "Initialize LP Refiner");
+        _streaming->initialize(phg);
+        _timer.stop_timer("initialize_lp_refiner");
+
+        _timer.start_timer("label_propagation", "Label Propagation");
+        improvement_found |= _streaming->refine(phg, dummy, _current_metrics, time_limit);
+        _timer.stop_timer("label_propagation");
       }
 
       if ( _label_propagation && _context.refinement.label_propagation.algorithm != LabelPropagationAlgorithm::do_nothing ) {
@@ -248,7 +259,7 @@ namespace mt_kahypar {
         _timer.stop_timer("fm");
       }
 
-      if ( _flows && _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing ) {
+     if ( _flows && _context.refinement.flows.algorithm != FlowAlgorithm::do_nothing ) {
         _timer.start_timer("initialize_flow_scheduler", "Initialize Flow Scheduler");
         _flows->initialize(phg);
         _timer.stop_timer("initialize_flow_scheduler");

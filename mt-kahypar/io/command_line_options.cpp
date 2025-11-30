@@ -318,6 +318,7 @@ namespace mt_kahypar {
     return options;
   }
 
+  // change here 
   po::options_description createRefinementOptionsDescription(Context& context,
                                                              const int num_columns,
                                                              const bool initial_partitioning) {
@@ -606,7 +607,44 @@ namespace mt_kahypar {
             po::value<size_t>((!initial_partitioning ? &context.refinement.rebalancing.det_max_rounds :
                               &context.initial_partitioning.refinement.rebalancing.det_max_rounds))->value_name(
                     "<size_t>")->default_value(0),
-            "Deterministic rebalancer: maximum number of iterations per rebalancing call");
+            "Deterministic rebalancer: maximum number of iterations per rebalancing call")
+            ((initial_partitioning ? "i-r-streaming-type" : "r-streaming-type"),
+             po::value<std::string>()->value_name("<string>")->notifier(
+                     [&, initial_partitioning](const std::string& type) {
+                       if (initial_partitioning) {
+                         context.initial_partitioning.refinement.streaming.algorithm =
+                                 streamingAlgorithmFromString(type);
+                       } else {
+                         context.refinement.streaming.algorithm =
+                                 streamingAlgorithmFromString(type);
+                       }
+                     })->default_value("streaming"),
+             "Streaming Refiner Algorithm:\n"
+             "- streaming\n"
+             "- do_nothing")
+            ((initial_partitioning ? "i-r-streaming-maximum-iterations" : "r-streaming-maximum-iterations"),
+             po::value<size_t>((!initial_partitioning ? &context.refinement.streaming.maximum_iterations :
+                                &context.initial_partitioning.refinement.streaming.maximum_iterations))->value_name(
+                     "<size_t>")->default_value(5),
+             "Maximum number of label propagation rounds")
+            ((initial_partitioning ? "i-r-streaming-rebalancing" : "r-streaming-rebalancing"),
+             po::value<bool>((!initial_partitioning ? &context.refinement.streaming.rebalancing :
+                              &context.initial_partitioning.refinement.streaming.rebalancing))->value_name(
+                     "<bool>")->default_value(true),
+             "If true, then zero gain moves are only performed if they improve the balance of the solution (only in label propagation)")
+            ((initial_partitioning ? "i-r-streaming-unconstrained" : "r-streaming-unconstrained"),
+             po::value<bool>((!initial_partitioning ? &context.refinement.streaming.unconstrained :
+                              &context.initial_partitioning.refinement.streaming.unconstrained))->value_name(
+                     "<bool>")->default_value(false),
+             "If true, then unconstrained label propagation (including rebalancing) is used.")
+            ((initial_partitioning ? "i-r-streaming-he-size-activation-threshold" : "r-lp-he-size-streaming-threshold"),
+             po::value<size_t>(
+                     (!initial_partitioning ? &context.refinement.streaming.hyperedge_size_activation_threshold
+                                            :
+                      &context.initial_partitioning.refinement.streaming.hyperedge_size_activation_threshold))->value_name(
+                     "<size_t>")->default_value(100),
+             "LP refiner activates only neighbors of moved vertices that are part of hyperedges with a size less than this threshold");
+
     return options;
   }
 

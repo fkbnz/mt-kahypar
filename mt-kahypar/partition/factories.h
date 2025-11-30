@@ -40,6 +40,7 @@ namespace mt_kahypar {
 
 typedef struct ip_data_container_s ip_data_container_t;
 
+// add streaming factory
 using CoarsenerFactory = mt_kahypar::ThreadSafeFactory<CoarseningAlgorithm,
                                            ICoarsener* (*)(mt_kahypar_hypergraph_t, const Context&, uncoarsening_data_t*)>;
 
@@ -47,6 +48,9 @@ using InitialPartitionerFactory = mt_kahypar::ThreadSafeFactory<InitialPartition
   IInitialPartitioner* (*)(const InitialPartitioningAlgorithm, ip_data_container_t*, const Context&, const int, const int)>;
 
 using LabelPropagationFactory = mt_kahypar::ThreadSafeFactory<LabelPropagationAlgorithm,
+                                  IRefiner* (*)(HypernodeID, HyperedgeID, const Context&, gain_cache_t, IRebalancer&)>;
+
+using StreamingRefinerFactory = mt_kahypar::ThreadSafeFactory<StreamingRefinerAlgorithm,
                                   IRefiner* (*)(HypernodeID, HyperedgeID, const Context&, gain_cache_t, IRebalancer&)>;
 
 using JetFactory = mt_kahypar::ThreadSafeFactory<JetAlgorithm,

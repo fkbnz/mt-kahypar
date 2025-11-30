@@ -62,6 +62,7 @@ class UncoarsenerBase {
           _jet(nullptr),
           _fm(nullptr),
           _flows(nullptr),
+          _streaming(nullptr),
           _rebalancer(nullptr) {}
 
   UncoarsenerBase(const UncoarsenerBase&) = delete;
@@ -83,6 +84,7 @@ class UncoarsenerBase {
   std::unique_ptr<IRefiner> _jet;
   std::unique_ptr<IRefiner> _fm;
   std::unique_ptr<IRefiner> _flows;
+  std::unique_ptr<IRefiner> _streaming;
   std::unique_ptr<IRebalancer> _rebalancer;
 
  protected:
@@ -117,6 +119,7 @@ class UncoarsenerBase {
     return m;
   }
 
+  // change here 
   void initializeRefinementAlgorithms() {
     _gain_cache = GainCachePtr::constructGainCache(_context);
     // refinement algorithms require access to the rebalancer
@@ -130,6 +133,9 @@ class UncoarsenerBase {
       _hg.initialNumNodes(), _hg.initialNumEdges(), _context, _gain_cache, *_rebalancer);
     _fm = FMFactory::getInstance().createObject(
       _context.refinement.fm.algorithm,
+      _hg.initialNumNodes(), _hg.initialNumEdges(), _context, _gain_cache, *_rebalancer);
+    _streaming = StreamingRefinerFactory::getInstance().createObject(
+      _context.refinement.streaming.algorithm,    
       _hg.initialNumNodes(), _hg.initialNumEdges(), _context, _gain_cache, *_rebalancer);
     _flows = FlowSchedulerFactory::getInstance().createObject(
       _context.refinement.flows.algorithm,

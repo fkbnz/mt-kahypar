@@ -219,6 +219,15 @@ namespace mt_kahypar {
     return os << static_cast<uint8_t>(algo);
   }
 
+  std::ostream & operator<< (std::ostream& os, const StreamingRefinerAlgorithm& algo) {
+    switch (algo) {
+      case StreamingRefinerAlgorithm::streaming: return os << "streaming";
+      case StreamingRefinerAlgorithm::do_nothing: return os << "do_nothing";
+        // omit default case to trigger compiler warning for missing cases
+    }
+    return os << static_cast<uint8_t>(algo);
+  }
+
   std::ostream & operator<< (std::ostream& os, const LabelPropagationAlgorithm& algo) {
     switch (algo) {
       case LabelPropagationAlgorithm::label_propagation: return os << "label_propagation";
@@ -451,6 +460,18 @@ namespace mt_kahypar {
     throw InvalidParameterException("Illegal option: " + algo);
     return InitialPartitioningAlgorithm::UNDEFINED;
   }
+
+  StreamingRefinerAlgorithm streamingAlgorithmFromString(const std::string& type) {
+    if (type == "do_nothing") {
+        return StreamingRefinerAlgorithm::do_nothing;
+    } else if (type == "streaming") {
+        return StreamingRefinerAlgorithm::streaming;
+    }
+
+    throw InvalidParameterException("Illegal option: " + type);
+    return StreamingRefinerAlgorithm::do_nothing;
+  }
+
 
   LabelPropagationAlgorithm labelPropagationAlgorithmFromString(const std::string& type) {
     if (type == "label_propagation") {

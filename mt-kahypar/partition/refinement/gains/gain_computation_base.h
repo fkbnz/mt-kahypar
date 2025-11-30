@@ -78,6 +78,35 @@ class GainComputationBase {
   }
 
   template<typename PartitionedHypergraph>
+  Move computeMaxGainMoveFennel(const PartitionedHypergraph& phg,
+                          const HypernodeID hn,
+                          const bool rebalance = false,
+                          const bool consider_non_adjacent_blocks = false,
+                          const bool allow_imbalance = false) {
+    Derived* derived = static_cast<Derived*>(this);
+    RatingMap& tmp_scores = _tmp_scores.local();
+    Gain& isolated_block_gain = _isolated_block_gain.local();
+    derived->precomputeGains(phg, hn, tmp_scores, isolated_block_gain, consider_non_adjacent_blocks);
+
+    constexpr double gamma = 1.5;
+    const double alpha = (std::sqrt(phg.k()) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
+    
+    // for each block take the fennel penalty into account
+    // add own refiner class for this ?
+    for (PartitionID block = 0; block <  phg.k(); block++) {
+        double fennel_penalty = alpha * gamma * std::sqrt(phg.partWeight(block));
+        tmp_scores[block] -= fennel_penalty;
+    } 
+
+    Move best_move = computeMaxGainMoveForScores(phg, tmp_scores, isolated_block_gain, hn,
+                        rebalance, consider_non_adjacent_blocks, allow_imbalance);
+
+    isolated_block_gain = 0;
+    tmp_scores.clear();
+    return best_move;
+  }
+
+  template<typename PartitionedHypergraph>
   Move computeMaxGainMoveForScores(const PartitionedHypergraph& phg,
                                    const RatingMap& tmp_scores,
                                    const Gain isolated_block_gain,

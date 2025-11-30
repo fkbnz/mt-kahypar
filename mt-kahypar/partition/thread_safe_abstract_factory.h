@@ -34,7 +34,6 @@
 
 #include "kahypar-resources/meta/function_traits.h"
 #include "kahypar-resources/meta/template_parameter_to_string.h"
-
 #include "mt-kahypar/utils/exception.h"
 
 

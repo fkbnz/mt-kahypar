@@ -43,8 +43,10 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
 
     _ip_data.reset_unassigned_hypernodes(_rng);
     _ip_data.preassignFixedVertices(hg);
+
     vec<vec<HypernodeID>> start_nodes =
       PseudoPeripheralStartNodes<TypeTraits>::computeStartNodes(_ip_data, _context, kInvalidPartition, _rng);
+
     for ( PartitionID block = 0; block < _context.partition.k; ++block ) {
       size_t i = 0;
       for ( ; i < std::min(start_nodes[block].size(),
@@ -253,7 +255,6 @@ MaxGainMove StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Partitioned
   const double alpha = (std::sqrt(_context.partition.k) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
 
   // for each block take the fennel penalty into account
-  // copy this to streaming initial partitioner ?
   for (PartitionID block = 0; block < _context.partition.k; ++block) { 
     double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
     _tmp_scores[block] -= fennel_penalty;
@@ -261,6 +262,7 @@ MaxGainMove StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Partitioned
 
   for (PartitionID block = 0; block < _context.partition.k; ++block) {
     if (from != block && _valid_blocks[block]) {
+
       _tmp_scores[block] -= internal_weight;
 
       // Since we perform size-constraint label propagation, the move to the
