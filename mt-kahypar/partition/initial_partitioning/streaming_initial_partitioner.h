@@ -28,13 +28,19 @@
 
 #include "mt-kahypar/partition/initial_partitioning/i_initial_partitioner.h"
 #include "mt-kahypar/partition/initial_partitioning/initial_partitioning_data_container.h"
-#include "mt-kahypar/partition/initial_partitioning/label_propagation_initial_partitioner.h"
+
 
 namespace mt_kahypar {
+
+struct MaxGainMoveStreaming {
+  const PartitionID block;
+  const double gain;
+};
 
 template<typename TypeTraits>
 class StreamingInitialPartitioner : public IInitialPartitioner {
 
+  using Gain = double;
   using PartitionedHypergraph = typename TypeTraits::PartitionedHypergraph;
   using DeltaFunction = std::function<void (const SynchronizedEdgeUpdate&)>;
   #define NOOP_FUNC [] (const SynchronizedEdgeUpdate&) { }
@@ -66,7 +72,7 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
       std::min(1.005, 1 + _context.partition.epsilon);
   }
 
-  MaxGainMove computeMaxGainMove(PartitionedHypergraph& hypergraph,
+  MaxGainMoveStreaming computeMaxGainMove(PartitionedHypergraph& hypergraph,
                                  const HypernodeID hn) {
     if ( hypergraph.partID(hn) == kInvalidPartition ) {
       return computeMaxGainMoveForUnassignedVertex(hypergraph, hn);
@@ -75,13 +81,13 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
     }
   }
 
-  MaxGainMove computeMaxGainMoveForUnassignedVertex(PartitionedHypergraph& hypergraph,
+  MaxGainMoveStreaming computeMaxGainMoveForUnassignedVertex(PartitionedHypergraph& hypergraph,
                                                     const HypernodeID hn);
 
-  MaxGainMove computeMaxGainMoveForAssignedVertex(PartitionedHypergraph& hypergraph,
+  MaxGainMoveStreaming computeMaxGainMoveForAssignedVertex(PartitionedHypergraph& hypergraph,
                                                   const HypernodeID hn);
 
-  MaxGainMove findMaxGainMove(PartitionedHypergraph& hypergraph,
+  MaxGainMoveStreaming findMaxGainMove(PartitionedHypergraph& hypergraph,
                               const HypernodeID hn,
                               const HyperedgeWeight internal_weight);
 

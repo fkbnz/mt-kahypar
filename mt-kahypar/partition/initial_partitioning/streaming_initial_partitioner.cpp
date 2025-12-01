@@ -93,7 +93,7 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
       for ( const HypernodeID& hn : hg.nodes() ) {
         if (hg.nodeDegree(hn) > 0 && !hg.isFixed(hn)) {
           // Assign vertex to the block where FM gain is maximized
-          MaxGainMove max_gain_move = computeMaxGainMove(hg, hn);
+          MaxGainMoveStreaming max_gain_move = computeMaxGainMove(hg, hn);
 
           const PartitionID to = max_gain_move.block;
           if ( to != kInvalidPartition ) {
@@ -171,7 +171,7 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
 }
 
 template<typename TypeTraits>
-MaxGainMove StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedVertex(PartitionedHypergraph& hypergraph,
+MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassignedVertex(PartitionedHypergraph& hypergraph,
                                                                                                   const HypernodeID hn) {
   ASSERT(hypergraph.partID(hn) == kInvalidPartition);
   ASSERT(std::all_of(_tmp_scores.begin(), _tmp_scores.end(), [](Gain i) { return i == 0; }),
@@ -202,7 +202,7 @@ MaxGainMove StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForUnassi
 }
 
 template<typename TypeTraits>
-MaxGainMove StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssignedVertex(PartitionedHypergraph& hypergraph,
+MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssignedVertex(PartitionedHypergraph& hypergraph,
                                                                                                 const HypernodeID hn) {
   ASSERT(hypergraph.partID(hn) != kInvalidPartition);
   ASSERT(std::all_of(_tmp_scores.begin(), _tmp_scores.end(), [](Gain i) { return i == 0; }),
@@ -243,14 +243,13 @@ MaxGainMove StreamingInitialPartitioner<TypeTraits>::computeMaxGainMoveForAssign
 }
 
 template<typename TypeTraits>
-MaxGainMove StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(PartitionedHypergraph& hypergraph,
+MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(PartitionedHypergraph& hypergraph,
                                                                             const HypernodeID hn,
                                                                             const HyperedgeWeight internal_weight) {
   const PartitionID from = hypergraph.partID(hn);
   PartitionID best_block = from;
   Gain best_score = from == kInvalidPartition ? std::numeric_limits<Gain>::min() : 0;
-
-  
+ 
   constexpr double gamma = 1.5;
   const double alpha = (std::sqrt(_context.partition.k) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
 
@@ -274,7 +273,7 @@ MaxGainMove StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Partitioned
     }
     _tmp_scores[block] = 0;
   }
-  return MaxGainMove { best_block, best_score };
+  return MaxGainMoveStreaming { best_block, best_score };
 }
 
 template<typename TypeTraits>
