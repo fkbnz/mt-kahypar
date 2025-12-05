@@ -618,7 +618,7 @@ namespace mt_kahypar {
                          context.refinement.streaming.algorithm =
                                  streamingAlgorithmFromString(type);
                        }
-                     })->default_value("streaming"),
+                     })->default_value("do_nothing"),
              "Streaming Refiner Algorithm:\n"
              "- streaming\n"
              "- do_nothing")
