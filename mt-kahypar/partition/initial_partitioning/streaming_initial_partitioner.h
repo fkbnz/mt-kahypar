@@ -98,6 +98,25 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
   void assignVertexToBlockWithMinimumWeight(PartitionedHypergraph& hypergraph,
                                             const HypernodeID hn);
 
+  void print_gains(PartitionID from)
+  {
+    std::cout << " Current Assignment: " << from;    
+
+    std::vector<std::pair<int, double>> scores;
+    for (int block = 0; block < _context.partition.k; block++) {
+        scores.push_back(std::pair<int, double>{block, _tmp_scores[block]});
+    }
+
+    std::sort(std::begin(scores), std::end(scores), [](auto&& lhs, auto&& rhs) {
+        return lhs.second > rhs.second;
+    });
+
+    std::cout << " Block Order: ";
+    for (auto [block, gain] : scores) {
+        std::cout << "{ " <<  block << ", " << gain << " } ";
+    }
+  }
+
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;
   kahypar::ds::FastResetFlagArray<> _valid_blocks;

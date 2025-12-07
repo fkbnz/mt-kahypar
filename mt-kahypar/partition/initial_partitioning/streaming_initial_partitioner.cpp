@@ -150,10 +150,8 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
           // In case vertex hn is a degree zero vertex we assign it
           // to the block with minimum weight
           assignVertexToBlockWithMinimumWeight(hg, hn);
-        }
-
+        } 
       }
-
     }
     hg.resetEdgeSynchronization();
 
@@ -221,6 +219,9 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMove
       // of hypernode hn, we would make the hyperedge cut, if we would assign
       // hn to an different block.
       internal_weight += he_weight;
+      for (const PartitionID& to : hypergraph.connectivitySet(he)) {
+        _tmp_scores[to] += he_weight;
+      }
     } else if ( connectivity == 2 ) {
       for (const PartitionID& to : hypergraph.connectivitySet(he)) {
         _valid_blocks.set(to, true);
@@ -246,23 +247,33 @@ template<typename TypeTraits>
 MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(PartitionedHypergraph& hypergraph,
                                                                             const HypernodeID hn,
                                                                             const HyperedgeWeight internal_weight) {
-  const PartitionID from = hypergraph.partID(hn);
-  PartitionID best_block = from;
-  Gain best_score = from == kInvalidPartition ? std::numeric_limits<Gain>::min() : 0;
- 
-  constexpr double gamma = 1.5;
+
+  constexpr static double gamma = 1.5;
   const double alpha = (std::sqrt(_context.partition.k) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
 
-  // for each block take the fennel penalty into account
-  for (PartitionID block = 0; block < _context.partition.k; ++block) { 
-    double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
-    _tmp_scores[block] -= fennel_penalty;
-  }
+  const PartitionID from = hypergraph.partID(hn);
+  PartitionID best_block = from;
+  Gain best_score = 0;
+  if (from == kInvalidPartition) {
+    best_score = -std::numeric_limits<Gain>::max();
+  } else {
+    // include current node in weight 
+    double from_penalty = alpha * gamma * 
+                          std::sqrt(hypergraph.partWeight(from) - hypergraph.nodeWeight(hn));
+    _tmp_scores[from] -= from_penalty;
+    best_score = _tmp_scores[from];
+  } 
 
   for (PartitionID block = 0; block < _context.partition.k; ++block) {
-    if (from != block && _valid_blocks[block]) {
+    // only considering valid blocks might 
+    // prevent the fennel penalty to be considered
+    if (from != block) {
 
-      _tmp_scores[block] -= internal_weight;
+      double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
+      _tmp_scores[block] -= fennel_penalty;
+
+      if (_valid_blocks[block])
+          _tmp_scores[block] -= internal_weight;
 
       // Since we perform size-constraint label propagation, the move to the
       // corresponding block is only valid, if it fullfils the balanced constraint.
@@ -271,8 +282,11 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
         best_block = block;
       }
     }
-    _tmp_scores[block] = 0;
+    
   }
+  
+  print_gains(from);
+  std::fill(std::begin(_tmp_scores), std::end(_tmp_scores), 0);
   return MaxGainMoveStreaming { best_block, best_score };
 }
 
