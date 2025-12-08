@@ -87,7 +87,7 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
     }
 
     bool converged = false;
-    for ( size_t i = 0; i < 1 && !converged; ++i ) {
+    for ( size_t i = 0; i < _context.initial_partitioning.lp_maximum_iterations && !converged; ++i ) {
       converged = true;
 
       for ( const HypernodeID& hn : hg.nodes() ) {
@@ -151,11 +151,6 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
           // to the block with minimum weight
           assignVertexToBlockWithMinimumWeight(hg, hn);
         } 
-
-        if (!hg.isFixed(hn)) {
-            print_gains(hg.partID(hn));
-            std::fill(std::begin(_tmp_scores), std::end(_tmp_scores), 0);
-        }
       }
     }
     hg.resetEdgeSynchronization();
@@ -287,6 +282,7 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
     } 
   }
   
+  std::fill(std::begin(_tmp_scores), std::end(_tmp_scores), 0);
   return MaxGainMoveStreaming { best_block, best_score };
 }
 
