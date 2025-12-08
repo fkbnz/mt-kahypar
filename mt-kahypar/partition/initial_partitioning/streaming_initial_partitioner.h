@@ -67,9 +67,14 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
                      const HypernodeID hn,
                      const PartitionID block) const {
     ASSERT(block != kInvalidPartition && block < _context.partition.k);
-    return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
-      _context.partition.perfect_balance_part_weights[block] *
-      std::min(1.005, 1 + _context.partition.epsilon);
+    if (!_context.partition.use_individual_part_weights) {
+      return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
+             _context.partition.perfect_balance_part_weights[block] *
+             std::min(1.005, 1 + _context.partition.epsilon);
+    } else {
+        return hypergraph.partWeight(block) + hypergraph.nodeWeight(hn) <=
+               _context.partition.max_part_weights[block];
+    }
   }
 
   MaxGainMoveStreaming computeMaxGainMove(PartitionedHypergraph& hypergraph,
@@ -121,6 +126,7 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
   const Context& _context;
   kahypar::ds::FastResetFlagArray<> _valid_blocks;
   parallel::scalable_vector<Gain> _tmp_scores;
+  parallel::scalable_vector<Gain> _internal_weights;
   std::mt19937 _rng;
   const int _tag;
 };

@@ -87,7 +87,7 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
     }
 
     bool converged = false;
-    for ( size_t i = 0; i < _context.initial_partitioning.lp_maximum_iterations && !converged; ++i ) {
+    for ( size_t i = 0; i < 1 && !converged; ++i ) {
       converged = true;
 
       for ( const HypernodeID& hn : hg.nodes() ) {
@@ -146,11 +146,16 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
             }
           }
 
-        } else if ( hg.partID(hn) == kInvalidPartition ) {
+        } else if ( !hg.isFixed(hn) ) {
           // In case vertex hn is a degree zero vertex we assign it
           // to the block with minimum weight
           assignVertexToBlockWithMinimumWeight(hg, hn);
         } 
+
+        if (!hg.isFixed(hn)) {
+            print_gains(hg.partID(hn));
+            std::fill(std::begin(_tmp_scores), std::end(_tmp_scores), 0);
+        }
       }
     }
     hg.resetEdgeSynchronization();
@@ -185,7 +190,6 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMove
       // in the hyperedge
       const PartitionID connected_block = *hypergraph.connectivitySet(he).begin();
       _valid_blocks.set(connected_block, true);
-      internal_weight += he_weight;
       _tmp_scores[connected_block] += he_weight;
     } else {
       // Otherwise we can assign the vertex to a block already contained
@@ -218,12 +222,14 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMove
       // If connectivity is one and there is more than one vertex in block
       // of hypernode hn, we would make the hyperedge cut, if we would assign
       // hn to an different block.
-      internal_weight += he_weight;
-      for (const PartitionID& to : hypergraph.connectivitySet(he)) {
-        _tmp_scores[to] += he_weight;
-      }
+      _tmp_scores[from] += he_weight;
     } else if ( connectivity == 2 ) {
       for (const PartitionID& to : hypergraph.connectivitySet(he)) {
+
+        if (to == from) {
+            continue; 
+        }
+
         _valid_blocks.set(to, true);
         // In case connectivity is two and hn is the last vertex in hyperedge
         // he of block from, we would make that hyperedge a non-cut hyperedge.
@@ -257,7 +263,7 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
   if (from == kInvalidPartition) {
     best_score = -std::numeric_limits<Gain>::max();
   } else {
-    // include current node in weight 
+    // Gain for not moving node ?
     double from_penalty = alpha * gamma * 
                           std::sqrt(hypergraph.partWeight(from) - hypergraph.nodeWeight(hn));
     _tmp_scores[from] -= from_penalty;
@@ -272,21 +278,15 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
       double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
       _tmp_scores[block] -= fennel_penalty;
 
-      if (_valid_blocks[block])
-          _tmp_scores[block] -= internal_weight;
-
       // Since we perform size-constraint label propagation, the move to the
       // corresponding block is only valid, if it fullfils the balanced constraint.
       if (fitsIntoBlock(hypergraph, hn, block) && _tmp_scores[block] > best_score) {
         best_score = _tmp_scores[block];
         best_block = block;
       }
-    }
-    
+    } 
   }
   
-  print_gains(from);
-  std::fill(std::begin(_tmp_scores), std::end(_tmp_scores), 0);
   return MaxGainMoveStreaming { best_block, best_score };
 }
 
@@ -332,18 +332,28 @@ void StreamingInitialPartitioner<TypeTraits>::extendBlockToInitialBlockSize(Part
 template<typename TypeTraits>
 void StreamingInitialPartitioner<TypeTraits>::assignVertexToBlockWithMinimumWeight(PartitionedHypergraph& hypergraph,
                                                                                           const HypernodeID hn) {
-  ASSERT(hypergraph.partID(hn) == kInvalidPartition);
+  // ASSERT(hypergraph.partID(hn) == kInvalidPartition);
   PartitionID minimum_weight_block = kInvalidPartition;
   HypernodeWeight minimum_weight = std::numeric_limits<HypernodeWeight>::max();
   for ( PartitionID block = 0; block < _context.partition.k; ++block ) {
-    const HypernodeWeight block_weight = hypergraph.partWeight(block);
+    HypernodeWeight block_weight = hypergraph.partWeight(block);
+    if (block == hypergraph.partID(hn)) {
+        block_weight -= hypergraph.nodeWeight(hn);
+    }
+
     if ( block_weight < minimum_weight ) {
       minimum_weight = block_weight;
       minimum_weight_block = block;
     }
   }
   ASSERT(minimum_weight_block != kInvalidPartition);
-  hypergraph.setNodePart(hn, minimum_weight_block);
+  if (hypergraph.partID(hn) != minimum_weight_block) {
+    if (hypergraph.partID(hn) == kInvalidPartition) {
+        hypergraph.setNodePart(hn, minimum_weight_block);
+    } else {
+        hypergraph.changeNodePart(hn, hypergraph.partID(hn), minimum_weight_block);
+    }
+  }
 }
 
 INSTANTIATE_CLASS_WITH_TYPE_TRAITS(StreamingInitialPartitioner)
