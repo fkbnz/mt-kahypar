@@ -55,7 +55,6 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
                                     const int seed, const int tag) :
     _ip_data(ip::to_reference<TypeTraits>(ip_data)),
     _context(context),
-    _valid_blocks(context.partition.k),
     _tmp_scores(context.partition.k),
     _rng(seed),
     _tag(tag) { }
@@ -93,8 +92,7 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
                                                   const HypernodeID hn);
 
   MaxGainMoveStreaming findMaxGainMove(PartitionedHypergraph& hypergraph,
-                              const HypernodeID hn,
-                              const HyperedgeWeight internal_weight);
+                              const HypernodeID hn);
 
   void extendBlockToInitialBlockSize(PartitionedHypergraph& hypergraph,
                                      const vec<HypernodeID>& seed_vertices,
@@ -124,9 +122,7 @@ class StreamingInitialPartitioner : public IInitialPartitioner {
 
   InitialPartitioningDataContainer<TypeTraits>& _ip_data;
   const Context& _context;
-  kahypar::ds::FastResetFlagArray<> _valid_blocks;
   parallel::scalable_vector<Gain> _tmp_scores;
-  parallel::scalable_vector<Gain> _internal_weights;
   std::mt19937 _rng;
   const int _tag;
 };
