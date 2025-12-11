@@ -23,7 +23,7 @@ MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptContraction(const Hypergrap
                                                                  const HypernodeID v) 
 {
     // Never allow any fixed vertices to be contracted
-    return !(fixed_vertices.isFixed(u) || fixed_vertices.isFixed(v)) || 
+    return !(fixed_vertices.isFixed(u) || fixed_vertices.isFixed(v)) &&
            !(hypergraph.isFixed(u) || hypergraph.isFixed(v));
 }
 
