@@ -18,12 +18,13 @@ public:
 template<typename Hypergraph>
 MT_KAHYPAR_ATTRIBUTE_ALWAYS_INLINE static bool acceptContraction(const Hypergraph& hypergraph,
                                                                  const ds::FixedVertexSupport<Hypergraph>& fixed_vertices,
-                                                                 const Context& context,
+                                                                 [[maybe_unused]] const Context& context,
                                                                  const HypernodeID u,
                                                                  const HypernodeID v) 
 {
     // Never allow any fixed vertices to be contracted
-    return !(fixed_vertices.isFixed(u) || fixed_vertices.isFixed(v));
+    return !(fixed_vertices.isFixed(u) || fixed_vertices.isFixed(v)) || 
+           !(hypergraph.isFixed(u) || hypergraph.isFixed(v));
 }
 
 };

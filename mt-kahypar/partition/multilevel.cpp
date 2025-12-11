@@ -92,6 +92,7 @@ namespace {
 
     utils::Timer& timer = utils::Utilities::instance().getTimer(context.utility_id);
     timer.start_timer("coarsening", "Coarsening");
+    context.streaming.coarsening_timer->start();
     {
       std::unique_ptr<ICoarsener> coarsener = CoarsenerFactory::getInstance().createObject(
         context.coarsening.algorithm, utils::hypergraph_cast(hypergraph),
@@ -105,11 +106,13 @@ namespace {
           "Coarsened Hypergraph", context.partition.show_memory_consumption);
       }
     }
+    context.streaming.coarsening_timer->end();
     timer.stop_timer("coarsening");
 
     // ################## INITIAL PARTITIONING ##################
     io::printInitialPartitioningBanner(context);
     timer.start_timer("initial_partitioning", "Initial Partitioning");
+    context.streaming.initial_partitioning_timer->start();
     PartitionedHypergraph& phg = uncoarseningData.coarsestPartitionedHypergraph();
 
     if ( !is_vcycle ) {
@@ -186,10 +189,12 @@ namespace {
         context.utility_id).printInitialPartitioningStats();
     }
     timer.stop_timer("initial_partitioning");
+    context.streaming.initial_partitioning_timer->end();
 
     // ################## UNCOARSENING ##################
     io::printLocalSearchBanner(context);
     timer.start_timer("refinement", "Refinement");
+    context.streaming.uncoarsening_timer->start();
     std::unique_ptr<IUncoarsener<TypeTraits>> uncoarsener(nullptr);
     if (uncoarseningData.nlevel) {
       #ifdef KAHYPAR_ENABLE_HIGHEST_QUALITY_FEATURES
@@ -206,6 +211,7 @@ namespace {
 
     io::printPartitioningResults(partitioned_hg, context, "Local Search Results:");
     timer.stop_timer("refinement");
+    context.streaming.uncoarsening_timer->start();
 
     return partitioned_hg;
   }

@@ -30,6 +30,11 @@
 #include "mt-kahypar/datastructures/hypergraph_common.h"
 #include "mt-kahypar/partition/context_enum_classes.h"
 #include "mt-kahypar/utils/utilities.h"
+#include "../../../include/timers.hpp"
+
+namespace hyst::timing {
+    class Timer;
+};
 
 namespace mt_kahypar {
 
@@ -309,11 +314,18 @@ struct SharedMemoryParameters {
 
 std::ostream & operator<< (std::ostream& str, const SharedMemoryParameters& params);
 
-class Context {
- public:
+struct StreamingParameters { 
   std::size_t inputNumNodes;
   std::size_t inputNumEdges;
+  
+  std::shared_ptr<hyst::timing::Timer> coarsening_timer;
+  std::shared_ptr<hyst::timing::Timer> initial_partitioning_timer;
+  std::shared_ptr<hyst::timing::Timer> uncoarsening_timer;
+};
 
+class Context {
+ public:
+  StreamingParameters streaming{ };
   PartitioningParameters partition { };
   PreprocessingParameters preprocessing { };
   CoarseningParameters coarsening { };

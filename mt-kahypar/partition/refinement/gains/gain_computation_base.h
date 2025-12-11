@@ -89,7 +89,7 @@ class GainComputationBase {
     derived->precomputeGains(phg, hn, tmp_scores, isolated_block_gain, consider_non_adjacent_blocks);
 
     constexpr double gamma = 1.5;
-    const double alpha = (std::sqrt(phg.k()) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
+    const double alpha = (std::sqrt(phg.k()) * _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
     
     // for each block take the fennel penalty into account
     // add own refiner class for this ?

@@ -40,7 +40,6 @@ void StreamingInitialPartitioner<TypeTraits>::partitionImpl() {
     HighResClockTimepoint start = std::chrono::high_resolution_clock::now();
     PartitionedHypergraph& hg = _ip_data.local_partitioned_hypergraph();
 
-
     _ip_data.reset_unassigned_hypernodes(_rng);
     _ip_data.preassignFixedVertices(hg);
 
@@ -213,11 +212,13 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
                                                                             const HypernodeID hn) {
 
   constexpr static double gamma = 1.5;
-  const double alpha = (std::sqrt(_context.partition.k) * _context.inputNumEdges) / (std::pow(_context.inputNumNodes, gamma));
+  const double alpha = (std::sqrt(_context.partition.k) * 
+                       _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
 
   const PartitionID from = hypergraph.partID(hn);
   PartitionID best_block = from;
   Gain best_score = 0;
+
   if (from == kInvalidPartition) {
     best_score = -std::numeric_limits<Gain>::max();
   } else { 
