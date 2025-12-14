@@ -39,6 +39,20 @@
 
 namespace mt_kahypar {
 
+  template<typename GraphAndGainTypes>
+  Move StreamingRefiner<GraphAndGainTypes>::findBestFennelMove(PartitionedHypergraph& hypergraph,
+                                                               const HypernodeID hn) {
+  // get scores 
+  // subtract fennel penalty
+  // find max 
+  
+  
+
+
+
+
+  }
+
   template <typename GraphAndGainTypes>
   template<bool unconstrained, typename F>
   bool StreamingRefiner<GraphAndGainTypes>::moveVertex(PartitionedHypergraph& hypergraph,
@@ -51,10 +65,11 @@ namespace mt_kahypar {
       ASSERT(hypergraph.nodeIsEnabled(hn));
 
       Move best_move = _gain.computeMaxGainMoveFennel(hypergraph, hn, false, false, unconstrained);
+        
       // We perform a move if it either improves the solution quality or, in case of a
       // zero gain move, the balance of the solution.
       const bool positive_gain = best_move.gain < 0;
-      const bool zero_gain_move = (_context.refinement.label_propagation.rebalancing &&
+      const bool zero_gain_move = (_context.refinement.streaming.rebalancing &&
                                     best_move.gain == 0 &&
                                     hypergraph.partWeight(best_move.from) - 1 >
                                     hypergraph.partWeight(best_move.to) + 1 &&
@@ -119,8 +134,8 @@ namespace mt_kahypar {
 
     // Update metrics statistics
     Gain delta = old_quality - best_metrics.quality;
-    ASSERT(delta >= 0, "LP refiner worsen solution quality");
-    utils::Utilities::instance().getStats(_context.utility_id).update_stat("lp_improvement", delta);
+    ASSERT(delta >= 0, "Streaming refiner worsen solution quality");
+    utils::Utilities::instance().getStats(_context.utility_id).update_stat("streaming_improvement", delta);
     return delta > 0;
   }
 
@@ -131,12 +146,12 @@ namespace mt_kahypar {
     NextActiveNodes next_active_nodes;
     vec<Move> rebalance_moves;
     bool should_stop = false;
-    for (size_t i = 0; i < _context.refinement.label_propagation.maximum_iterations
+    for (size_t i = 0; i < _context.refinement.streaming.maximum_iterations
                        && !should_stop && !_active_nodes.empty(); ++i) {
       should_stop = labelPropagationRound(hypergraph, next_active_nodes, best_metrics, rebalance_moves,
-                                          _context.refinement.label_propagation.unconstrained);
+                                          _context.refinement.streaming.unconstrained);
 
-      if ( _context.refinement.label_propagation.execute_sequential ) {
+      if ( _context.refinement.streaming.execute_sequential ) {
         _active_nodes = next_active_nodes.copy_sequential();
       } else {
         _active_nodes = next_active_nodes.copy_parallel();
@@ -231,7 +246,7 @@ namespace mt_kahypar {
     const bool should_update_gain_cache = GainCache::invalidates_entries && _gain_cache.isInitialized();
     const bool should_mark_nodes = unconstrained || should_update_gain_cache;
 
-    if ( _context.refinement.label_propagation.execute_sequential ) {
+    if ( _context.refinement.streaming.execute_sequential ) {
       utils::Randomize::instance().shuffleVector(
               _active_nodes, UL(0), _active_nodes.size(), THREAD_ID);
 

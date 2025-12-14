@@ -120,6 +120,9 @@ class StreamingRefiner final : public IRefiner {
                   NextActiveNodes& next_active_nodes,
                   const F& objective_delta);
 
+  Move findBestFennelMove(PartitionedHypergraph& hypergraph,
+                          const HypernodeID hn); 
+
   void initializeActiveNodes(PartitionedHypergraph& hypergraph,
                              const parallel::scalable_vector<HypernodeID>& refinement_nodes);
 

@@ -637,13 +637,18 @@ namespace mt_kahypar {
                               &context.initial_partitioning.refinement.streaming.unconstrained))->value_name(
                      "<bool>")->default_value(false),
              "If true, then unconstrained label propagation (including rebalancing) is used.")
-            ((initial_partitioning ? "i-r-streaming-he-size-activation-threshold" : "r-lp-he-size-streaming-threshold"),
+            ((initial_partitioning ? "i-r-streaming-he-size-activation-threshold" : "r-streaming-he-size-activation-threshold"),
              po::value<size_t>(
                      (!initial_partitioning ? &context.refinement.streaming.hyperedge_size_activation_threshold
                                             :
                       &context.initial_partitioning.refinement.streaming.hyperedge_size_activation_threshold))->value_name(
                      "<size_t>")->default_value(100),
-             "LP refiner activates only neighbors of moved vertices that are part of hyperedges with a size less than this threshold");
+             "LP refiner activates only neighbors of moved vertices that are part of hyperedges with a size less than this threshold")
+            ((initial_partitioning ? "i-r-streaming-relative-improvement-threshold" : "r-streaming-relative-improvement-threshold"),
+             po::value<double>((!initial_partitioning ? &context.refinement.streaming.relative_improvement_threshold :
+                                &context.initial_partitioning.refinement.streaming.relative_improvement_threshold))->value_name(
+                     "<double>")->default_value(-1.0),
+             "Relative improvement threshold for label propagation.");
 
     return options;
   }
