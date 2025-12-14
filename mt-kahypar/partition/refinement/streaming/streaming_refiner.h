@@ -40,6 +40,15 @@
 
 
 namespace mt_kahypar {
+
+struct StreamingMove {
+PartitionID from;
+PartitionID to;
+HypernodeID node;
+double gain;
+};
+
+
 template <typename GraphAndGainTypes>
 class StreamingRefiner final : public IRefiner {
  private:
@@ -54,6 +63,7 @@ class StreamingRefiner final : public IRefiner {
   static constexpr bool enable_heavy_assert = false;
 
  public:
+
   explicit StreamingRefiner(const HypernodeID num_hypernodes,
                                    const HyperedgeID num_hyperedges,
                                    const Context& context,
@@ -120,7 +130,7 @@ class StreamingRefiner final : public IRefiner {
                   NextActiveNodes& next_active_nodes,
                   const F& objective_delta);
 
-  Move findBestFennelMove(PartitionedHypergraph& hypergraph,
+  StreamingMove findBestFennelMove(PartitionedHypergraph& hypergraph,
                           const HypernodeID hn); 
 
   void initializeActiveNodes(PartitionedHypergraph& hypergraph,
