@@ -51,6 +51,7 @@ namespace mt_kahypar {
       tmp_scores[block] = double(_gain.gain(block_gain, isolated_block_gain));
     }
 
+    // also subtract fennel penalty for isolated block gain ?
     constexpr static double gamma = 1.5;
     const double alpha = (std::sqrt(_context.partition.k) * 
                          _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
@@ -60,35 +61,11 @@ namespace mt_kahypar {
       gain -= fennel_penalty;
     }
 
-    PartitionID from = hypergraph.partID(hn);
-    HypernodeWeight hn_weight = hypergraph.nodeWeight(hn);
-    StreamingMove best_move{from, from, hn, 0};
-    utils::Randomize& rand = utils::Randomize::instance();
-    int cpu_id = THREAD_ID;
-    auto test_and_apply = [&](const PartitionID to,
-                              const double score,
-                              const bool no_tie_breaking = false) {
-      bool new_best_gain = (score < best_move.gain) ||
-                            (score == best_move.gain &&
-                            /* !_disable_randomization && */
-                            (no_tie_breaking || rand.flipCoin(cpu_id)));
-      if (new_best_gain && (/* allow_imbalance  || */ hypergraph.partWeight(to) + hn_weight <=
-          _context.partition.max_part_weights[to])) {
-        best_move.to = to;
-        best_move.gain = score;
-        return true;
-      } else {
-        return false;
-      }
-    };
-
-    for (auto& [to, score] : tmp_scores) {
-      if (from != to) {
-          test_and_apply(to, score);
-      }
-    }
- 
-    return best_move;
+    return _gain.computeMaxGainMoveForFloatScores(hypergraph,
+                                                  tmp_scores,
+                                                  isolated_block_gain,
+                                                  hn, false, 
+                                                  false, false);  
   }
 
   template <typename GraphAndGainTypes>
@@ -118,36 +95,35 @@ namespace mt_kahypar {
         PartitionID from = best_move.from;
         PartitionID to = best_move.to;
 
-        // Gain delta_before = _gain.localDelta();
+        Gain delta_before = _gain.localDelta();
         bool changed_part = changeNodePart<unconstrained>(hypergraph, hn, from, to, objective_delta);
         ASSERT(!unconstrained || changed_part);
         is_moved = true;
 
-        // update the gain correctly ?
-
-        // if (unconstrained || changed_part) {
-        //   // In case the move to block 'to' was successful, we verify that the "real" gain
-        //   // of the move is either equal to our computed gain or if not, still improves
-        //   // the solution quality.
-        //   Gain move_delta = _gain.localDelta() - delta_before;
-        //   bool accept_move = (move_delta == best_move.gain || move_delta <= 0);
-        //   if (accept_move) {
-        //     if constexpr (!unconstrained) {
-        //       // in unconstrained case, we don't want to activate neighbors if the move is undone
-        //       // by the rebalancing
-        //       activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
-        //     }
-        //   } else {
-        //     // If the real gain is not equal with the computed gain and
-        //     // worsens the solution quality we revert the move.
-        //     ASSERT(hypergraph.partID(hn) == to);
-        //     changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta);
-        //   }
-        // }
+        // update the gain delta correctly ?
+        if (unconstrained || changed_part) {
+          // In case the move to block 'to' was successful, we verify that the "real" gain
+          // of the move is either equal to our computed gain or if not, still improves
+          // the solution quality.
+          Gain move_delta = _gain.localDelta() - delta_before;
+          bool accept_move = (move_delta == best_move.gain || move_delta <= 0);
+          if (accept_move) {
+            if constexpr (!unconstrained) {
+              // in unconstrained case, we don't want to activate neighbors if the move is undone
+              // by the rebalancing
+              activateNodeAndNeighbors(hypergraph, next_active_nodes, hn, true);
+            }
+          } else {
+            // If the real gain is not equal with the computed gain and
+            // worsens the solution quality we revert the move.
+            ASSERT(hypergraph.partID(hn) == to);
+            changeNodePart<unconstrained>(hypergraph, hn, to, from, objective_delta);
+          }
+        }
       }
     }
 
-    return is_moved;
+    return is_moved; 
   }
 
   template <typename GraphAndGainTypes>
@@ -175,8 +151,8 @@ namespace mt_kahypar {
 
     // Update metrics statistics
     Gain delta = old_quality - best_metrics.quality;
-    // ASSERT(delta >= 0, "Streaming refiner worsen solution quality");
-    // utils::Utilities::instance().getStats(_context.utility_id).update_stat("streaming_improvement", delta);
+    ASSERT(delta >= 0, "Streaming refiner worsen solution quality");
+    utils::Utilities::instance().getStats(_context.utility_id).update_stat("streaming_improvement", delta);
     return delta > 0;
   }
 
@@ -278,7 +254,7 @@ namespace mt_kahypar {
   template <typename GraphAndGainTypes>
   template<bool unconstrained>
   void StreamingRefiner<GraphAndGainTypes>::moveActiveNodes(PartitionedHypergraph& phg,
-                                                                NextActiveNodes& next_active_nodes) {
+                                                            NextActiveNodes& next_active_nodes) {
     // This function is passed as lambda to the changeNodePart function and used
     // to calculate the "real" delta of a move (in terms of the used objective function).
     auto objective_delta = [&](const SynchronizedEdgeUpdate& sync_update) {

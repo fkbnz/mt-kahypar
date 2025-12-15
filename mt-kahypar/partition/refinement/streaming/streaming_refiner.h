@@ -41,14 +41,6 @@
 
 namespace mt_kahypar {
 
-struct StreamingMove {
-PartitionID from;
-PartitionID to;
-HypernodeID node;
-double gain;
-};
-
-
 template <typename GraphAndGainTypes>
 class StreamingRefiner final : public IRefiner {
  private:

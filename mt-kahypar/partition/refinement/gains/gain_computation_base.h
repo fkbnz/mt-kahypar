@@ -39,6 +39,13 @@
 
 namespace mt_kahypar {
 
+struct StreamingMove {
+  PartitionID from;
+  PartitionID to;
+  HypernodeID node;
+  double gain;
+};
+
 template <class Derived = Mandatory,
           class AttributedGains = Mandatory>
 class GainComputationBase {
@@ -113,6 +120,70 @@ class GainComputationBase {
       const PartitionID to = entry.key;
       if (from != to) {
         const Gain score = derived->gain(entry.value, isolated_block_gain);
+        test_and_apply(to, score);
+      }
+    }
+
+    if ( consider_non_adjacent_blocks && best_move.to == from ) {
+      // This is important for our rebalancer as the last fallback strategy
+      vec<PartitionID> non_adjacent_block;
+      for ( PartitionID to = 0; to < _context.partition.k; ++to ) {
+        if ( from != to && !tmp_scores.contains(to) ) {
+          // This block is not adjacent to the current node
+          if ( test_and_apply(to, isolated_block_gain, true /* no tie breaking */ ) ) {
+            non_adjacent_block.push_back(to);
+          }
+        }
+      }
+
+      if ( non_adjacent_block.size() > 0 ) {
+        // Choose one at random
+        const PartitionID to = non_adjacent_block[
+          rand.getRandomInt(0, static_cast<int>(non_adjacent_block.size() - 1), cpu_id)];
+        best_move.to = to;
+        best_move.gain = isolated_block_gain;
+      }
+    }
+
+    return best_move;
+  }
+
+  template<typename PartitionedHypergraph>
+  StreamingMove computeMaxGainMoveForFloatScores(const PartitionedHypergraph& phg,
+                                                 const ds::SparseMap<PartitionID, double>& tmp_scores,
+                                                 const double isolated_block_gain,
+                                                 const HypernodeID hn,
+                                                 const bool rebalance = false,
+                                                 const bool consider_non_adjacent_blocks = false,
+                                                 const bool allow_imbalance = false) {
+    Derived* derived = static_cast<Derived*>(this);
+
+    PartitionID from = phg.partID(hn);
+    StreamingMove best_move { from, from, hn, rebalance ? -std::numeric_limits<double>::max() : 0 };
+    HypernodeWeight hn_weight = phg.nodeWeight(hn);
+    int cpu_id = THREAD_ID;
+    utils::Randomize& rand = utils::Randomize::instance();
+    auto test_and_apply = [&](const PartitionID to,
+                              const double score,
+                              const bool no_tie_breaking = false) {
+      bool new_best_gain = (score < best_move.gain) ||
+                            (score == best_move.gain &&
+                            !_disable_randomization &&
+                            (no_tie_breaking || rand.flipCoin(cpu_id)));
+      if (new_best_gain && (allow_imbalance || phg.partWeight(to) + hn_weight <=
+          _context.partition.max_part_weights[to])) {
+        best_move.to = to;
+        best_move.gain = score;
+        return true;
+      } else {
+        return false;
+      }
+    };
+
+    for ( const auto& entry : tmp_scores ) {
+      const PartitionID to = entry.key;
+      if (from != to) {
+        const double score = isolated_block_gain - entry.value;
         test_and_apply(to, score);
       }
     }
