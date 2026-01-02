@@ -211,7 +211,7 @@ namespace {
 
     io::printPartitioningResults(partitioned_hg, context, "Local Search Results:");
     timer.stop_timer("refinement");
-    context.streaming.uncoarsening_timer->start();
+    context.streaming.uncoarsening_timer->end();
 
     return partitioned_hg;
   }
