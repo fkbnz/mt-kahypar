@@ -57,7 +57,7 @@ namespace mt_kahypar {
                          _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
 
     for (auto& [block, gain] : tmp_scores) {
-      double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
+      double fennel_penalty = hypergraph.nodeWeight(hn) * alpha * gamma * std::sqrt(hypergraph.partWeight(block));
       gain -= fennel_penalty;
     }
 

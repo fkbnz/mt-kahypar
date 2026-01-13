@@ -222,7 +222,7 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
   if (from == kInvalidPartition) {
     best_score = -std::numeric_limits<Gain>::max();
   } else { 
-    double from_penalty = alpha * gamma * 
+    double from_penalty = hypergraph.nodeWeight(hn) * alpha * gamma *
                           std::sqrt(hypergraph.partWeight(from) - hypergraph.nodeWeight(hn));
     _tmp_scores[from] -= from_penalty;
     best_score = _tmp_scores[from];
@@ -233,7 +233,7 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::findMaxGainMove(Pa
     // prevent the fennel penalty to be considered
     if (from != block) {
 
-      double fennel_penalty = alpha * gamma * std::sqrt(hypergraph.partWeight(block));
+      double fennel_penalty = hypergraph.nodeWeight(hn) * alpha * gamma * std::sqrt(hypergraph.partWeight(block));
       _tmp_scores[block] -= fennel_penalty;
 
       // Since we perform size-constraint label propagation, the move to the
