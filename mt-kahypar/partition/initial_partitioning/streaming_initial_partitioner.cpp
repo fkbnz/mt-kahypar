@@ -191,15 +191,23 @@ MaxGainMoveStreaming StreamingInitialPartitioner<TypeTraits>::computeMaxGainMove
   ASSERT(std::all_of(_tmp_scores.begin(), _tmp_scores.end(), [](Gain i) { return i == 0; }),
           "Temp gain array not initialized properly");
 
+
+  const auto is_internal_edge = [&hypergraph](HyperedgeID edge) -> bool {
+    return hypergraph.connectivity(edge) <= 1;
+  };
+
   const PartitionID from = hypergraph.partID(hn);
   for (const HyperedgeID& he : hypergraph.incidentEdges(hn)) {
     const HyperedgeWeight he_weight = hypergraph.edgeWeight(he);
-    const HypernodeID pins_in_from_part = hypergraph.pinCountInPart(he, from);
 
     for (PartitionID to : hypergraph.connectivitySet(he)) {
-        if (from == to && pins_in_from_part <= 1) {
+
+        // Check that we do not count non-internal edges 
+        // toward the score of the `from` block.
+        if (from == to && !is_internal_edge(he)) {
             continue;
-        }
+        } 
+
         _tmp_scores[to] += he_weight;
     }
   }
