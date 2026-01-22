@@ -51,13 +51,17 @@ namespace mt_kahypar {
       tmp_scores[block] = double(_gain.gain(block_gain, isolated_block_gain));
     }
 
-    // also subtract fennel penalty for isolated block gain ?
     constexpr static double gamma = 1.5;
     const double alpha = (std::sqrt(_context.partition.k) * 
                          _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
 
     for (auto& [block, gain] : tmp_scores) {
       double fennel_penalty = hypergraph.nodeWeight(hn) * alpha * gamma * std::sqrt(hypergraph.partWeight(block));
+      if (PartitionID part = hypergraph.partID(hn); part == kInvalidPartition) {
+        fennel_penalty = hypergraph.nodeWeight(hn) * alpha * 
+                         gamma * std::sqrt(hypergraph.partWeight(block) - hypergraph.nodeWeight(hn));
+      }
+
       gain -= fennel_penalty;
     }
 
@@ -65,7 +69,7 @@ namespace mt_kahypar {
                                                   tmp_scores,
                                                   isolated_block_gain,
                                                   hn, false, 
-                                                  false, false);  
+                                                  true, false);  
   }
 
   template <typename GraphAndGainTypes>
