@@ -43,8 +43,15 @@ namespace mt_kahypar {
   StreamingMove StreamingRefiner<GraphAndGainTypes>::findBestFennelMove(PartitionedHypergraph& hypergraph,
                                                                         const HypernodeID hn) {
     Gain isolated_block_gain = 0; 
-    typename GainCalculator::RatingMap tmp_scores_integer(_context.partition.k);
     ds::SparseMap<PartitionID, double> tmp_scores(_context.partition.k); 
+    
+    std::for_each(std::begin(tmp_scores), std::end(tmp_scores), [](auto&& elem) { 
+        elem.value = 0.0;
+    });
+
+    ASSERT(tmp_scores.size() == _context.partition.k);
+
+    typename GainCalculator::RatingMap tmp_scores_integer(_context.partition.k);
     _gain.precomputeGains(hypergraph, hn, tmp_scores_integer, isolated_block_gain, false);
     
     for (auto& [block, block_gain] : tmp_scores_integer) {
@@ -68,8 +75,7 @@ namespace mt_kahypar {
     return _gain.computeMaxGainMoveForFloatScores(hypergraph,
                                                   tmp_scores,
                                                   isolated_block_gain,
-                                                  hn, false, 
-                                                  true, false);  
+                                                  hn, false, false);  
   }
 
   template <typename GraphAndGainTypes>
