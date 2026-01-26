@@ -45,11 +45,9 @@ namespace mt_kahypar {
     Gain isolated_block_gain = 0; 
     ds::SparseMap<PartitionID, double> tmp_scores(_context.partition.k); 
     
-    std::for_each(std::begin(tmp_scores), std::end(tmp_scores), [](auto&& elem) { 
-        elem.value = 0.0;
-    });
-
-    ASSERT(tmp_scores.size() == _context.partition.k);
+    for (PartitionID part = 0; part < _context.partition.k; part++) {
+        tmp_scores.add(part, 0);
+    }
 
     typename GainCalculator::RatingMap tmp_scores_integer(_context.partition.k);
     _gain.precomputeGains(hypergraph, hn, tmp_scores_integer, isolated_block_gain, false);
@@ -72,6 +70,7 @@ namespace mt_kahypar {
       gain -= fennel_penalty;
     }
 
+    ASSERT(tmp_scores.size() == _context.partition.k);
     return _gain.computeMaxGainMoveForFloatScores(hypergraph,
                                                   tmp_scores,
                                                   isolated_block_gain,
