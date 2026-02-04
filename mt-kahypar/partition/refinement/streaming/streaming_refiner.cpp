@@ -61,7 +61,12 @@ namespace mt_kahypar {
                          _context.streaming.inputNumEdges) / (std::pow(_context.streaming.inputNumNodes, gamma));
 
     for (auto& [block, gain] : tmp_scores) {
-      double fennel_penalty = hypergraph.nodeWeight(hn) * alpha * gamma * std::sqrt(hypergraph.partWeight(block));
+      auto partWeight = hypergraph.partWeight(block);
+      if (block == hypergraph.partID(hn)) {
+        partWeight -= hypergraph.nodeWeight(hn);
+      }
+
+      double fennel_penalty = hypergraph.nodeWeight(hn) * alpha * gamma * partWeight;
       if (PartitionID part = hypergraph.partID(hn); part == kInvalidPartition) {
         fennel_penalty = hypergraph.nodeWeight(hn) * alpha * 
                          gamma * std::sqrt(hypergraph.partWeight(block) - hypergraph.nodeWeight(hn));
